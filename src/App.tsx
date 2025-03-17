@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import styled, { ThemeProvider, createGlobalStyle } from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useHotkeys } from 'react-hotkeys-hook';
@@ -6,8 +6,10 @@ import NoteList from './components/NoteList';
 import NoteEditor from './components/NoteEditor';
 import CatFileRenderer from './components/CatFileRenderer';
 import ShortcutHelp from './components/ShortcutHelp';
+import { useNotes } from './hooks/useNotes';
+import { useStatusMessage } from './hooks/useStatusMessage';
+import { useUIState } from './hooks/useUIState';
 import { Note } from './types';
-import { saveNoteToPublicFolder, loadNotesFromPublicFolder, deleteNoteFromPublicFolder } from './utils/serverFileSystem';
 
 const theme = {
   colors: {
@@ -243,25 +245,6 @@ const ActionButton = styled.button`
   }
 `;
 
-const SearchBar = styled.input`
-  padding: ${props => props.theme.spacing.small} ${props => props.theme.spacing.medium};
-  background-color: #252525;
-  border: none;
-  color: ${props => props.theme.colors.foreground};
-  font-family: ${props => props.theme.fontMono};
-  font-size: 12px;
-  margin: ${props => props.theme.spacing.small} ${props => props.theme.spacing.small};
-  border-radius: ${props => props.theme.borderRadius};
-  
-  &:focus {
-    outline: 1px solid #444;
-  }
-  
-  &::placeholder {
-    color: ${props => props.theme.colors.muted};
-  }
-`;
-
 // Add a status message component
 const StatusMessage = styled.div`
   position: fixed;
@@ -283,144 +266,31 @@ const StatusMessage = styled.div`
 `;
 
 function App() {
-  const [notes, setNotes] = useState<Note[]>([]);
-  const [activeNote, setActiveNote] = useState<Note | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showShortcutHelp, setShowShortcutHelp] = useState(false);
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const { statusMessage, showStatus } = useStatusMessage();
+  const { 
+    notes, 
+    activeNote, 
+    setActiveNote,
+    searchQuery, 
+    setSearchQuery,
+    filteredNotes,
+    loadNotes,
+    updateNote,
+    createNote,
+    deleteNote
+  } = useNotes(showStatus);
+  
+  const {
+    showShortcutHelp,
+    setShowShortcutHelp,
+    viewMode,
+    toggleViewMode
+  } = useUIState(activeNote?.id);
   
   // Load notes from the server on startup
-  useEffect(() => {
+  React.useEffect(() => {
     loadNotes();
-  }, []);
-  
-  // Show status message with auto-dismiss
-  const showStatus = (message: string, duration = 2000) => {
-    setStatusMessage(message);
-    setTimeout(() => {
-      setStatusMessage(null);
-    }, duration);
-  };
-  
-  // Load notes from the server
-  const loadNotes = async () => {
-    try {
-      const serverNotes = await loadNotesFromPublicFolder();
-      if (serverNotes.length > 0) {
-        setNotes(serverNotes);
-        setActiveNote(serverNotes[0]);
-        showStatus(`Loaded ${serverNotes.length} notes`);
-      } else {
-        // If no server notes, create a default welcome note
-        const welcomeNote: Note = {
-          id: Date.now().toString(),
-          title: 'Welcome to Notes',
-          content: 'Start writing your notes here. They will be automatically saved to the server.',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          fileType: 'cat'
-        };
-        
-        setNotes([welcomeNote]);
-        setActiveNote(welcomeNote);
-        await saveNoteToPublicFolder(welcomeNote);
-        showStatus('Created welcome note');
-      }
-    } catch (error) {
-      console.error('Error loading notes:', error);
-      showStatus('Failed to load notes from server', 3000);
-    }
-  };
-  
-  // Update a note
-  const updateNote = async (updatedNote: Note) => {
-    const updatedNoteWithTimestamp = {
-      ...updatedNote, 
-      updatedAt: new Date().toISOString()
-    };
-    
-    const updatedNotes = notes.map(note => 
-      note.id === updatedNote.id ? updatedNoteWithTimestamp : note
-    );
-    
-    setNotes(updatedNotes);
-    setActiveNote(updatedNoteWithTimestamp);
-    
-    // Auto-save the note to the server
-    try {
-      await saveNoteToPublicFolder(updatedNoteWithTimestamp);
-      showStatus('Note saved');
-    } catch (error) {
-      console.error('Error saving note:', error);
-      showStatus('Failed to save note', 3000);
-    }
-  };
-  
-  // Create a new note
-  const createNote = async () => {
-    const newNote: Note = {
-      id: Date.now().toString(),
-      title: 'New Note',
-      content: '',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      fileType: 'cat' // Default to .cat file type for new notes
-    };
-    
-    setNotes([newNote, ...notes]);
-    setActiveNote(newNote);
-    
-    // Auto-save the new note to the server
-    try {
-      await saveNoteToPublicFolder(newNote);
-      showStatus('New note created');
-    } catch (error) {
-      console.error('Error creating note:', error);
-      showStatus('Failed to save new note', 3000);
-    }
-  };
-  
-  // Delete a note
-  const deleteNote = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this note?')) {
-      try {
-        // Delete from server first
-        await deleteNoteFromPublicFolder(id);
-        
-        // Then update local state
-        const updatedNotes = notes.filter(note => note.id !== id);
-        setNotes(updatedNotes);
-        
-        if (activeNote && activeNote.id === id) {
-          setActiveNote(updatedNotes.length > 0 ? updatedNotes[0] : null);
-        }
-        
-        showStatus('Note deleted');
-      } catch (error) {
-        console.error('Error deleting note:', error);
-        showStatus('Failed to delete note', 3000);
-      }
-    }
-  };
-  
-  // Filter notes based on search
-  const filteredNotes = notes.filter(note => 
-    note.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    note.content.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  // State to track view vs edit mode for .cat files
-  const [viewMode, setViewMode] = useState(false);
-
-  // Toggle between edit and view modes for .cat files
-  const toggleViewMode = () => {
-    setViewMode(!viewMode);
-  };
-
-  // Reset view mode when changing notes
-  useEffect(() => {
-    setViewMode(false);
-  }, [activeNote?.id]);
+  }, [loadNotes]);
 
   // Determine whether to show the editor or the .cat renderer
   const renderNoteContent = () => {
@@ -532,12 +402,6 @@ function App() {
     }
   }, { enableOnFormTags: ['INPUT', 'TEXTAREA'] });
   
-  useHotkeys('ctrl+f, command+f', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    document.getElementById('search-input')?.focus();
-  }, { enableOnFormTags: ['INPUT', 'TEXTAREA'] });
-  
   // Delete current note with Ctrl+Backspace or Cmd+Backspace
   useHotkeys('ctrl+backspace, command+backspace', (e) => {
     e.preventDefault();
@@ -586,15 +450,7 @@ function App() {
             </SidebarControls>
           </SidebarHeader>
           
-          {/* Search bar for filtering notes */}
-          <SearchBar
-            id="search-input"
-            placeholder="Search notes..."
-            value={searchQuery}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
-          />
-          
-          {/* Notes list */}
+          {/* Notes list with search functionality */}
           <NoteList
             notes={filteredNotes}
             activeNote={activeNote}
