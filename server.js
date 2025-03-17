@@ -59,9 +59,12 @@ app.post('/api/save-note', (req, res) => {
 // API to delete a note
 app.delete('/api/delete-note', (req, res) => {
   try {
+    console.log('Delete note request received:', req.body);
+    
     const { filename } = req.body;
     
     if (!filename) {
+      console.log('Error: No filename provided in delete request');
       return res.status(400).json({ error: 'Filename is required' });
     }
     
@@ -69,17 +72,60 @@ app.delete('/api/delete-note', (req, res) => {
     const sanitizedFilename = path.basename(filename);
     const filePath = path.join(notesDir, sanitizedFilename);
     
+    console.log(`Attempting to delete note: ${filePath}`);
+    
+    // List all files in the notes directory to help with debugging
+    const filesInDir = fs.readdirSync(notesDir);
+    console.log(`Files in notes directory:`, filesInDir);
+    
+    // Try direct path first
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
-      console.log(`Deleted note: ${filePath}`);
-      res.json({ success: true });
+      console.log(`Successfully deleted note: ${filePath}`);
+      return res.json({ success: true });
+    } 
+    
+    console.log(`File not found at expected path: ${filePath}`);
+    
+    // Extract noteId from filename (assuming format is either id.cat or title-id.cat)
+    let noteId = '';
+    if (filename.includes('-')) {
+      // Format: title-id.cat
+      noteId = filename.split('-').pop().replace('.cat', '');
     } else {
-      console.log(`File not found: ${filePath}`);
-      res.status(404).json({ error: 'File not found' });
+      // Format: id.cat
+      noteId = filename.replace('.cat', '');
     }
+    
+    console.log(`Extracted note ID: ${noteId}`);
+    
+    // Try to find any file that contains this ID
+    const matchingFiles = filesInDir.filter(file => {
+      // Check for id.cat format
+      if (file === `${noteId}.cat`) return true;
+      
+      // Check for title-id.cat format
+      if (file.endsWith(`-${noteId}.cat`)) return true;
+      
+      return false;
+    });
+    
+    console.log(`Files matching note ID ${noteId}:`, matchingFiles);
+    
+    if (matchingFiles.length > 0) {
+      // Delete the first matching file
+      const matchedFilePath = path.join(notesDir, matchingFiles[0]);
+      fs.unlinkSync(matchedFilePath);
+      console.log(`Successfully deleted note with fallback: ${matchedFilePath}`);
+      return res.json({ success: true });
+    }
+    
+    // If we get here, no matching file was found
+    console.log(`No matching files found for note ID: ${noteId}`);
+    res.status(404).json({ error: 'File not found' });
   } catch (error) {
     console.error('Error deleting note:', error);
-    res.status(500).json({ error: 'Failed to delete note' });
+    res.status(500).json({ error: `Failed to delete note: ${error.message}` });
   }
 });
 
