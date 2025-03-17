@@ -1,46 +1,53 @@
-# Getting Started with Create React App
+# Notes App
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A simple, elegant notes application that automatically saves your notes to the server.
 
-## Available Scripts
+## Features
 
-In the project directory, you can run:
+- Create and edit notes with Markdown support
+- Notes are automatically saved to the server as `.cat` files
+- Files are stored in the `public/notes` folder
+- No need to manually export or import notes
+- Keyboard shortcuts for common actions
+- Dark mode interface
 
-### `npm start`
+## Getting Started
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+1. Clone this repository
+2. Install dependencies:
+   ```
+   npm install
+   ```
+3. Start the development server with both React app and API:
+   ```
+   npm run dev
+   ```
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+## How It Works
 
-### `npm test`
+- All notes are automatically saved to the `public/notes` folder as `.cat` files
+- Each note is saved whenever you make changes
+- Notes are loaded from the server when the app starts
+- You can see your notes in the `public/notes` folder
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## Keyboard Shortcuts
 
-### `npm run build`
+- `Ctrl+N` or `⌘+N`: Create a new note
+- `Ctrl+S` or `⌘+S`: Save the current note (although saving is automatic)
+- `Ctrl+F` or `⌘+F`: Focus the search bar
+- `Ctrl+Backspace` or `⌘+Backspace`: Delete the current note
+- `Ctrl+/` or `⌘+/`: Show keyboard shortcuts
+- `Ctrl+P` or `⌘+P`: Toggle between edit and preview modes for .cat files
+- `Escape`: Close dialogs
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## File Format
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+Notes are saved in the `.cat` format with a simple structure:
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
-
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
-
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
+```
+TITLE: Note Title
+CREATED: 2023-04-18T12:34:56.789Z
+UPDATED: 2023-04-18T12:34:56.789Z
+---
+Content of the note goes here.
+```
